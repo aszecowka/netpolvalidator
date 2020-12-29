@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: payment-b
+  name: payment-b
+spec:
+  selector:
+    matchLabels:
+      app: payment-b
+  template:
+    metadata:
+      labels:
+        app: payment-b
+    spec:
+      containers:
+        - image: nginx
+          imagePullPolicy: Always
+          name: nginx

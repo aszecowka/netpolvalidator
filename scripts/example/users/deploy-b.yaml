@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: users-b
+  name: users-b
+spec:
+  selector:
+    matchLabels:
+      app: users-b
+  template:
+    metadata:
+      labels:
+        app: users-b
+    spec:
+      containers:
+        - image: nginx
+          imagePullPolicy: Always
+          name: nginx

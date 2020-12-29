@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: orders-a
+  name: orders-a
+spec:
+  selector:
+    matchLabels:
+      app: orders-a
+  template:
+    metadata:
+      labels:
+        app: orders-a
+    spec:
+      containers:
+        - image: nginx
+          imagePullPolicy: Always
+          name: nginx
