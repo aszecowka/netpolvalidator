@@ -11,6 +11,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 
+	"github.com/aszecowka/netpolvalidator/internal/model"
 	"github.com/aszecowka/netpolvalidator/internal/netpol"
 	"github.com/aszecowka/netpolvalidator/internal/ns"
 	"github.com/aszecowka/netpolvalidator/internal/podcandidate"
@@ -61,10 +62,17 @@ func main() {
 	validators := make(map[string]rule.Validator)
 	validators["label correctness"] = rule.NewLabelCorrectness()
 
-	for name, validator := range validators {
-		err := validator.Validate(*clusterState)
+	var allViolations []model.Violation
+	for _, validator := range validators {
+		violations, err := validator.Validate(*clusterState)
 		if err != nil {
-			fmt.Println(name, err)
+			panic(err)
 		}
+		allViolations = append(allViolations, violations...)
+	}
+
+	fmt.Printf("Found %d violations\n", len(allViolations))
+	for _, v := range allViolations {
+		fmt.Println(v)
 	}
 }
