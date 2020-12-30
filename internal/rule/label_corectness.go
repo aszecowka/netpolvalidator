@@ -19,8 +19,8 @@ func NewLabelCorrectness() *labelCorrectness {
 
 func (lc *labelCorrectness) Validate(state model.ClusterState) ([]model.Violation, error) {
 	var allViolations []model.Violation
-	for _, policies := range state.NetworkPolicies {
-		for _, np := range policies {
+	for _, policiesForGivenNamespace := range state.NetworkPolicies {
+		for _, np := range policiesForGivenNamespace {
 			violations, err := lc.validateNetworkPolicy(np, state.Namespaces, state.PodCandidates)
 			if err != nil {
 				return nil, err
@@ -56,7 +56,7 @@ func (lc *labelCorrectness) validateNetworkPolicy(np netv1.NetworkPolicy, namesp
 func (lc *labelCorrectness) validatePodSelector(np netv1.NetworkPolicy, podCandidates []model.PodCandidate) ([]model.Violation, error) {
 	selector, err := metav1.LabelSelectorAsSelector(&np.Spec.PodSelector)
 	if err != nil {
-		return nil, fmt.Errorf("while creating lables.selector: %w", err)
+		return nil, fmt.Errorf("while creating label.selector from spec.PodSelector for %s : %w", prettyNetworkPolicy(np), err)
 	}
 
 	found := false
@@ -111,7 +111,7 @@ func (lc *labelCorrectness) validatePeer(np netv1.NetworkPolicy, from netv1.Netw
 	if from.PodSelector != nil && from.NamespaceSelector != nil {
 		filteredNs, err := lc.getNamespacesMatchingSelector(namespaces, *from.NamespaceSelector)
 		if err != nil {
-			return nil, fmt.Errorf("while getting namespaces specified in the %s rule [%s] for [%s/%s]:%w", ruleType, position, np.Namespace, np.Name, err)
+			return nil, fmt.Errorf("while getting namespaces specified in the %s rule [%s] for %s :%w", ruleType, position, prettyNetworkPolicy(np), err)
 		}
 		if len(filteredNs) == 0 {
 			allViolations = append(allViolations, model.NewViolation(np, getViolationMessageWithTypeAndPosition(msgNoNsMatchingLabelsForIngressRulePattern, ruleType, position), model.ViolationInvalidLabel))
@@ -120,7 +120,7 @@ func (lc *labelCorrectness) validatePeer(np netv1.NetworkPolicy, from netv1.Netw
 		podsFromNs := lc.getPodsFromNamespaces(filteredNs, podCandidates)
 		matching, err := lc.getPodCandidatesMatchingSelector(*from.PodSelector, podsFromNs)
 		if err != nil {
-			return nil, fmt.Errorf("while getting pod candidates that matches pod selector in the %s rule [%s] for [%s/%s]: %w", ruleType, position, np.Namespace, np.Name, err)
+			return nil, fmt.Errorf("while getting pod candidates that matches pod selector in the %s rule [%s] for %s: %w", ruleType, position, prettyNetworkPolicy(np), err)
 
 		}
 		if len(matching) == 0 {
@@ -130,7 +130,7 @@ func (lc *labelCorrectness) validatePeer(np netv1.NetworkPolicy, from netv1.Netw
 	} else if from.PodSelector != nil {
 		podsInTheSameNs, err := lc.getPodCandidatesMatchingSelector(*from.PodSelector, podCandidates[np.Namespace])
 		if err != nil {
-			return nil, fmt.Errorf("while getting pod candidates that matches pod selector in the %s rule [%s] for [%s/%s]: %w", ruleType, position, np.Namespace, np.Name, err)
+			return nil, fmt.Errorf("while getting pod candidates that matches pod selector in the %s rule [%s] for %s: %w", ruleType, position, prettyNetworkPolicy(np), err)
 		}
 		if len(podsInTheSameNs) == 0 {
 			allViolations = append(allViolations, model.NewViolation(np, getViolationMessageWithTypeAndPosition(msgNoPodsMatchingLabelsForIngressRulePattern, ruleType, position), model.ViolationInvalidLabel))
@@ -139,7 +139,7 @@ func (lc *labelCorrectness) validatePeer(np netv1.NetworkPolicy, from netv1.Netw
 	} else if from.NamespaceSelector != nil {
 		filteredNs, err := lc.getNamespacesMatchingSelector(namespaces, *from.NamespaceSelector)
 		if err != nil {
-			return nil, fmt.Errorf("while getting namespaces specified in the %s rule [%s] for [%s/%s]:%w", ruleType, position, np.Namespace, np.Name, err)
+			return nil, fmt.Errorf("while getting namespaces specified in the %s rule [%s] for %s:%w", ruleType, position, prettyNetworkPolicy(np), err)
 		}
 		if len(filteredNs) == 0 {
 			allViolations = append(allViolations, model.NewViolation(np, getViolationMessageWithTypeAndPosition(msgNoNsMatchingLabelsForIngressRulePattern, ruleType, position), model.ViolationInvalidLabel))
