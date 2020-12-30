@@ -139,7 +139,7 @@ spec:
 		actualViolations, err := sut.Validate(givenState)
 		require.NoError(t, err)
 		require.Len(t, actualViolations, 1)
-		assert.Equal(t, model.NewViolation(givenNetPol, "no namespaces matching labels for ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+		assert.Equal(t, model.NewViolation(givenNetPol, "no namespaces matching labels for Ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
 	})
 
 	t.Run("ingress rule for specific pods and namespaces does not match any pods", func(t *testing.T) {
@@ -177,7 +177,7 @@ spec:
 		// THEN
 		require.NoError(t, err)
 		require.Len(t, actualViolations, 1)
-		assert.Equal(t, model.NewViolation(givenNetPol, "no pods matching labels for ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+		assert.Equal(t, model.NewViolation(givenNetPol, "no pods matching labels for Ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
 	})
 
 	t.Run("ingress rule for pods in the network policy namespace is correct", func(t *testing.T) {
@@ -245,7 +245,7 @@ spec:
 		// THEN
 		require.NoError(t, err)
 		require.Len(t, actualViolations, 1)
-		assert.Equal(t, model.NewViolation(givenNetPol, "no pods matching labels for ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+		assert.Equal(t, model.NewViolation(givenNetPol, "no pods matching labels for Ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
 	})
 
 	t.Run("ingress rule for all pods in the selected namespaces is correct", func(t *testing.T) {
@@ -315,7 +315,7 @@ spec:
 		// THEN
 		require.NoError(t, err)
 		require.Len(t, actualViolations, 1)
-		assert.Equal(t, model.NewViolation(givenNetPol, "no namespaces matching labels for ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+		assert.Equal(t, model.NewViolation(givenNetPol, "no namespaces matching labels for Ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
 	})
 
 	t.Run("ingress rule for all pods in the selected namespaces does not match any pod", func(t *testing.T) {
@@ -349,7 +349,7 @@ spec:
 		// THEN
 		require.NoError(t, err)
 		require.Len(t, actualViolations, 1)
-		assert.Equal(t, model.NewViolation(givenNetPol, "no pods in namespaces matching labels for ingress rule: [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+		assert.Equal(t, model.NewViolation(givenNetPol, "no pods in namespaces matching labels for Ingress rule: [1:1]", model.ViolationInvalidLabel), actualViolations[0])
 	})
 
 	t.Run("returns many combined errors", func(t *testing.T) {

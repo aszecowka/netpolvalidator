@@ -9,9 +9,12 @@ import (
 
 const (
 	ViolationInvalidLabel ViolationType = "Invalid Label"
+	Ingress               RuleType      = "Ingress"
+	Egress                RuleType      = "Egress"
 )
 
 type ViolationType string
+type RuleType string
 
 type PodCandidate struct {
 	OwnerName string

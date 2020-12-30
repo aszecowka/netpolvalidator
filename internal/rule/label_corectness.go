@@ -80,59 +80,69 @@ func (lc *labelCorrectness) validateIngress(np netv1.NetworkPolicy, namespaces [
 	for idxIngress, ingresRule := range np.Spec.Ingress {
 		for idxFrom, from := range ingresRule.From {
 			position := fmt.Sprintf("%d:%d", idxIngress+1, idxFrom+1)
-			if from.PodSelector != nil && from.NamespaceSelector != nil {
-				filteredNs, err := lc.getNamespacesMatchingSelector(namespaces, *from.NamespaceSelector)
-				if err != nil {
-					return nil, fmt.Errorf("while getting namespaces specified in the ingress rule [%s] for [%s/%s]:%w", position, np.Namespace, np.Name, err)
-				}
-				if len(filteredNs) == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoNsMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
-					continue
-				}
-				podsFromNs := lc.getPodsFromNamespaces(filteredNs, podCandidates)
-				matching, err := lc.getPodCandidatesMatchingSelector(*from.PodSelector, podsFromNs)
-				if err != nil {
-					return nil, fmt.Errorf("while getting pod candidates that matches pod selector in rule [%s] for [%s/%s]: %w", position, np.Namespace, np.Name, err)
-
-				}
-				if len(matching) == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoPodsMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
-					continue
-				}
-			} else if from.PodSelector != nil {
-				podsInTheSameNs, err := lc.getPodCandidatesMatchingSelector(*from.PodSelector, podCandidates[np.Namespace])
-				if err != nil {
-					return nil, fmt.Errorf("while getting pod candidates that matches pod selector in rule [%s] for [%s/%s]: %w", position, np.Namespace, np.Name, err)
-				}
-				if len(podsInTheSameNs) == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoPodsMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
-					continue
-				}
-			} else if from.NamespaceSelector != nil {
-				filteredNs, err := lc.getNamespacesMatchingSelector(namespaces, *from.NamespaceSelector)
-				if err != nil {
-					return nil, fmt.Errorf("while getting namespaces specified in the ingress rule [%s] for [%s/%s]:%w", position, np.Namespace, np.Name, err)
-				}
-				if len(filteredNs) == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoNsMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
-					continue
-				}
-
-				podsInFilteredNS := 0
-				for _, ns := range filteredNs {
-					podsInFilteredNS += len(podCandidates[ns.Name])
-				}
-				if podsInFilteredNS == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoPodsInNamespaceMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
-					continue
-				}
+			violations, err := lc.validatePeer(np, from, position, model.Ingress, namespaces, podCandidates)
+			if err != nil {
+				return nil, err
 			}
+			allViolations = append(allViolations, violations...)
 		}
 	}
 	return allViolations, nil
 }
 
 func (lc *labelCorrectness) validateEgress(np netv1.NetworkPolicy, namespaces []v1.Namespace, podCandidates map[string][]model.PodCandidate) ([]model.Violation, error) {
+	return nil, nil
+}
+
+func (lc *labelCorrectness) validatePeer(np netv1.NetworkPolicy, from netv1.NetworkPolicyPeer, position string, ruleType model.RuleType, namespaces []v1.Namespace, podCandidates map[string][]model.PodCandidate) ([]model.Violation, error) {
+	var allViolations []model.Violation
+	if from.PodSelector != nil && from.NamespaceSelector != nil {
+		filteredNs, err := lc.getNamespacesMatchingSelector(namespaces, *from.NamespaceSelector)
+		if err != nil {
+			return nil, fmt.Errorf("while getting namespaces specified in the %s rule [%s] for [%s/%s]:%w", ruleType, position, np.Namespace, np.Name, err)
+		}
+		if len(filteredNs) == 0 {
+			allViolations = append(allViolations, model.NewViolation(np, getViolationMessageWithTypeAndPosition(msgNoNsMatchingLabelsForIngressRulePattern, ruleType, position), model.ViolationInvalidLabel))
+			return allViolations, nil
+		}
+		podsFromNs := lc.getPodsFromNamespaces(filteredNs, podCandidates)
+		matching, err := lc.getPodCandidatesMatchingSelector(*from.PodSelector, podsFromNs)
+		if err != nil {
+			return nil, fmt.Errorf("while getting pod candidates that matches pod selector in the %s rule [%s] for [%s/%s]: %w", ruleType, position, np.Namespace, np.Name, err)
+
+		}
+		if len(matching) == 0 {
+			allViolations = append(allViolations, model.NewViolation(np, getViolationMessageWithTypeAndPosition(msgNoPodsMatchingLabelsForIngressRulePattern, ruleType, position), model.ViolationInvalidLabel))
+			return allViolations, nil
+		}
+	} else if from.PodSelector != nil {
+		podsInTheSameNs, err := lc.getPodCandidatesMatchingSelector(*from.PodSelector, podCandidates[np.Namespace])
+		if err != nil {
+			return nil, fmt.Errorf("while getting pod candidates that matches pod selector in the %s rule [%s] for [%s/%s]: %w", ruleType, position, np.Namespace, np.Name, err)
+		}
+		if len(podsInTheSameNs) == 0 {
+			allViolations = append(allViolations, model.NewViolation(np, getViolationMessageWithTypeAndPosition(msgNoPodsMatchingLabelsForIngressRulePattern, ruleType, position), model.ViolationInvalidLabel))
+			return allViolations, nil
+		}
+	} else if from.NamespaceSelector != nil {
+		filteredNs, err := lc.getNamespacesMatchingSelector(namespaces, *from.NamespaceSelector)
+		if err != nil {
+			return nil, fmt.Errorf("while getting namespaces specified in the %s rule [%s] for [%s/%s]:%w", ruleType, position, np.Namespace, np.Name, err)
+		}
+		if len(filteredNs) == 0 {
+			allViolations = append(allViolations, model.NewViolation(np, getViolationMessageWithTypeAndPosition(msgNoNsMatchingLabelsForIngressRulePattern, ruleType, position), model.ViolationInvalidLabel))
+			return allViolations, nil
+		}
+
+		podsInFilteredNS := 0
+		for _, ns := range filteredNs {
+			podsInFilteredNS += len(podCandidates[ns.Name])
+		}
+		if podsInFilteredNS == 0 {
+			allViolations = append(allViolations, model.NewViolation(np, getViolationMessageWithTypeAndPosition(msgNoPodsInNamespaceMatchingLabelsForIngressRulePattern, ruleType, position), model.ViolationInvalidLabel))
+			return allViolations, nil
+		}
+	}
 	return nil, nil
 }
 
