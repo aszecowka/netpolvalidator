@@ -77,43 +77,44 @@ func (lc *labelCorrectness) validatePodSelector(np netv1.NetworkPolicy, podCandi
 
 func (lc *labelCorrectness) validateIngress(np netv1.NetworkPolicy, namespaces []v1.Namespace, podCandidates map[string][]model.PodCandidate) ([]model.Violation, error) {
 	var allViolations []model.Violation
-	for _, ingresRule := range np.Spec.Ingress {
-		for idx, from := range ingresRule.From {
+	for idxIngress, ingresRule := range np.Spec.Ingress {
+		for idxFrom, from := range ingresRule.From {
+			position := fmt.Sprintf("%d:%d", idxIngress+1, idxFrom+1)
 			if from.PodSelector != nil && from.NamespaceSelector != nil {
 				filteredNs, err := lc.getNamespacesMatchingSelector(namespaces, *from.NamespaceSelector)
 				if err != nil {
-					return nil, fmt.Errorf("while getting namespaces specified in the ingress rule [%d] for [%s/%s]:%w", idx, np.Namespace, np.Name, err)
+					return nil, fmt.Errorf("while getting namespaces specified in the ingress rule [%s] for [%s/%s]:%w", position, np.Namespace, np.Name, err)
 				}
 				if len(filteredNs) == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoNsMatchingLabelsForIngressRulePattern, idx), model.ViolationInvalidLabel))
+					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoNsMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
 					continue
 				}
 				podsFromNs := lc.getPodsFromNamespaces(filteredNs, podCandidates)
 				matching, err := lc.getPodCandidatesMatchingSelector(*from.PodSelector, podsFromNs)
 				if err != nil {
-					return nil, fmt.Errorf("while getting pod candidates that matches pod selector in rule [%d] for [%s/%s]: %w", idx, np.Namespace, np.Name, err)
+					return nil, fmt.Errorf("while getting pod candidates that matches pod selector in rule [%s] for [%s/%s]: %w", position, np.Namespace, np.Name, err)
 
 				}
 				if len(matching) == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoPodsMatchingLabelsForIngressRulePattern, idx), model.ViolationInvalidLabel))
+					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoPodsMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
 					continue
 				}
 			} else if from.PodSelector != nil {
 				podsInTheSameNs, err := lc.getPodCandidatesMatchingSelector(*from.PodSelector, podCandidates[np.Namespace])
 				if err != nil {
-					return nil, fmt.Errorf("while getting pod candidates that matches pod selector in rule [%d] for [%s/%s]: %w", idx, np.Namespace, np.Name, err)
+					return nil, fmt.Errorf("while getting pod candidates that matches pod selector in rule [%s] for [%s/%s]: %w", position, np.Namespace, np.Name, err)
 				}
 				if len(podsInTheSameNs) == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoPodsMatchingLabelsForIngressRulePattern, idx), model.ViolationInvalidLabel))
+					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoPodsMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
 					continue
 				}
 			} else if from.NamespaceSelector != nil {
 				filteredNs, err := lc.getNamespacesMatchingSelector(namespaces, *from.NamespaceSelector)
 				if err != nil {
-					return nil, fmt.Errorf("while getting namespaces specified in the ingress rule [%d] for [%s/%s]:%w", idx, np.Namespace, np.Name, err)
+					return nil, fmt.Errorf("while getting namespaces specified in the ingress rule [%s] for [%s/%s]:%w", position, np.Namespace, np.Name, err)
 				}
 				if len(filteredNs) == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoNsMatchingLabelsForIngressRulePattern, idx), model.ViolationInvalidLabel))
+					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoNsMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
 					continue
 				}
 
@@ -122,7 +123,7 @@ func (lc *labelCorrectness) validateIngress(np netv1.NetworkPolicy, namespaces [
 					podsInFilteredNS += len(podCandidates[ns.Name])
 				}
 				if podsInFilteredNS == 0 {
-					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoPodsInNamespaceMatchingLabelsForIngressRulePattern, idx), model.ViolationInvalidLabel))
+					allViolations = append(allViolations, model.NewViolation(np, fmt.Sprintf(msgNoPodsInNamespaceMatchingLabelsForIngressRulePattern, position), model.ViolationInvalidLabel))
 					continue
 				}
 			}
