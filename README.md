@@ -40,4 +40,4 @@ Unfortunately, when defining network policy, you can make a lot of mistakes:
 
 ## Development
 
-- To run tests, execute: `make test`
+- To build, tests and check quality of code, execute: `make all`
