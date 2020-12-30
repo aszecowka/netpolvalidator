@@ -643,22 +643,67 @@ spec:
 	t.Run("returns many combined errors", func(t *testing.T) {
 		// TODO later
 		// GIVEN
+		netPolOrders := getNetPol(t, `
+metadata:
+  name: ingress-egress-for-orders-a
+  namespace: orders
+spec:
+  podSelector:
+    matchLabels:
+      app: orders-does-not-exist
+  ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            app: does-not-exist
+  egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            domain: does-not-exist
+      - podSelector:
+          matchLabels:
+            app: does-not-exist
+    `)
+
+		netPolPayments := getNetPol(t, `
+metadata:
+  name: ingress-egress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: does-not-exist
+  ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            app: does-not-exist
+  egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            domain: does-not-exist
+      - podSelector:
+          matchLabels:
+            app: does-not-exist
+    `)
 		givenState := model.ClusterState{
 			Namespaces: []v1.Namespace{fixNsOrders()},
 			NetworkPolicies: map[string][]netv1.NetworkPolicy{
 				nsOrders: {
-					fixIngressNetworkPolicyForOrdersA(),
+					netPolOrders,
 				},
 				nsPayments: {
-					fixIngressNetworkPolicyForPaymentsA(),
+					netPolPayments,
 				},
 			},
 			PodCandidates: map[string][]model.PodCandidate{
 				nsOrders: {
-					fixPodCandidateOrdersB(),
+					fixPodCandidateOrdersA(),
 				},
 				nsPayments: {
-					fixPodCandidatePaymentsB(),
+					fixPodCandidatePaymentsA(),
 				},
 			},
 		}
@@ -666,8 +711,16 @@ spec:
 		actual, err := sut.Validate(givenState)
 		// THEN
 		require.NoError(t, err)
-		require.NotEmpty(t, actual)
-		// TODO more assertions
+		require.Len(t, actual, 8)
+		require.Contains(t, actual, model.NewViolation(netPolOrders, "no pods matching pod selector", model.ViolationInvalidLabel))
+		require.Contains(t, actual, model.NewViolation(netPolOrders, "no pods matching labels for Ingress rule [1:1]", model.ViolationInvalidLabel))
+		require.Contains(t, actual, model.NewViolation(netPolOrders, "no namespaces matching labels for Egress rule [1:1]", model.ViolationInvalidLabel))
+		require.Contains(t, actual, model.NewViolation(netPolOrders, "no pods matching labels for Egress rule [1:2]", model.ViolationInvalidLabel))
+		require.Contains(t, actual, model.NewViolation(netPolPayments, "no pods matching pod selector", model.ViolationInvalidLabel))
+		require.Contains(t, actual, model.NewViolation(netPolPayments, "no pods matching labels for Ingress rule [1:1]", model.ViolationInvalidLabel))
+		require.Contains(t, actual, model.NewViolation(netPolPayments, "no namespaces matching labels for Egress rule [1:1]", model.ViolationInvalidLabel))
+		require.Contains(t, actual, model.NewViolation(netPolPayments, "no pods matching labels for Egress rule [1:2]", model.ViolationInvalidLabel))
+
 	})
 
 }
