@@ -20,12 +20,22 @@ func NewDeploymentService(client v1.DeploymentsGetter) *DeployService {
 }
 
 func (ds *DeployService) GetPodCandidatesForNamespace(ctx context.Context, ns string) ([]model.PodCandidate, error) {
-	deployments, err := ds.client.Deployments(ns).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("while gettting deployments from namespace: %s: %w", ns, err)
+	var allDeployments []appsv1.Deployment
+	continueOption := ""
+	for {
+		deployments, err := ds.client.Deployments(ns).List(ctx, metav1.ListOptions{Continue: continueOption})
+		if err != nil {
+			return nil, fmt.Errorf("while gettting deployments from namespace: %s: %w", ns, err)
+		}
+		allDeployments = append(allDeployments, deployments.Items...)
+		continueOption = deployments.Continue
+		if continueOption == "" {
+			break
+		}
+
 	}
 	var out []model.PodCandidate
-	for _, d := range deployments.Items {
+	for _, d := range allDeployments {
 		out = append(out, ds.convert(d))
 	}
 	return out, nil
