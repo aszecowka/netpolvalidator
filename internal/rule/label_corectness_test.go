@@ -1,10 +1,8 @@
 package rule_test
 
 import (
-	"errors"
 	"testing"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -23,7 +21,7 @@ const (
 )
 
 func TestValidate(t *testing.T) {
-	t.Run("no validation errors", func(t *testing.T) {
+	t.Run("no violations", func(t *testing.T) {
 		// GIVEN
 		sut := rule.NewLabelCorrectness()
 		givenState := model.ClusterState{
@@ -46,9 +44,10 @@ func TestValidate(t *testing.T) {
 			},
 		}
 		// WHEN
-		err := sut.Validate(givenState)
+		violations, err := sut.Validate(givenState)
 		// THEN
 		require.NoError(t, err)
+		require.Empty(t, violations)
 	})
 
 	t.Run("network policy pod selector does not match any pod", func(t *testing.T) {
@@ -68,16 +67,11 @@ func TestValidate(t *testing.T) {
 			},
 		}
 		// WHEN
-		err := sut.Validate(givenState)
+		actual, err := sut.Validate(givenState)
 		// THEN
-
-		var multiErr *multierror.Error
-		if errors.As(err, &multiErr) {
-			require.Len(t, multiErr.Errors, 1)
-			assert.EqualError(t, multiErr.Errors[0], "there is no matching pods for network policy: [orders/ingress-for-orders-a]")
-		} else {
-			t.Fail()
-		}
+		require.NoError(t, err)
+		require.Len(t, actual, 1)
+		assert.Equal(t, model.NewViolation(fixIngressNetworkPolicyForOrdersA(), "no pods matching pod selector", model.ViolationInvalidLabel), actual[0])
 	})
 
 	t.Run("returns many combined errors", func(t *testing.T) {
@@ -103,19 +97,13 @@ func TestValidate(t *testing.T) {
 			},
 		}
 		// WHEN
-		err := sut.Validate(givenState)
+		actual, err := sut.Validate(givenState)
 		// THEN
-
-		var multiErr *multierror.Error
-		if errors.As(err, &multiErr) {
-			require.Len(t, multiErr.Errors, 2)
-			assert.EqualError(t, multiErr.Errors[0], "there is no matching pods for network policy: [orders/ingress-for-orders-a]")
-			assert.EqualError(t, multiErr.Errors[1], "there is no matching pods for network policy: [payments/ingress-for-payments-a]")
-
-		} else {
-			t.Fail()
-		}
+		require.NoError(t, err)
+		require.NotEmpty(t, actual)
+		// TODO more assertions
 	})
+
 }
 
 func fixNsOrders() v1.Namespace {
