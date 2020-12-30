@@ -181,26 +181,179 @@ spec:
 	})
 
 	t.Run("ingress rule for pods in the network policy namespace is correct", func(t *testing.T) {
+		// GIVEN
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {
+					getNetPol(t, `
+metadata:
+  name: ingress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            app: payments-b
+    `),
+				},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA(), fixPodCandidatePaymentsB()},
+			},
+		}
 
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Empty(t, actualViolations)
 	})
 
 	t.Run("ingress rule for pods in the network policy namespace does not match any pods", func(t *testing.T) {
+		// GIVEN
+		givenNetPol := getNetPol(t, `
+metadata:
+  name: ingress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            app: payments-c
+    `)
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {givenNetPol},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA(), fixPodCandidatePaymentsB()},
+			},
+		}
 
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Len(t, actualViolations, 1)
+		assert.Equal(t, model.NewViolation(givenNetPol, "no pods matching labels for ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
 	})
 
 	t.Run("ingress rule for all pods in the selected namespaces is correct", func(t *testing.T) {
+		// GIVEN
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments(), fixNsOrders()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {
+					getNetPol(t, `
+metadata:
+  name: ingress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            domain: orders
+    `),
+				},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA()},
+				nsOrders:   {fixPodCandidateOrdersA()},
+			},
+		}
 
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Empty(t, actualViolations)
 	})
 
 	t.Run("ingress rule for all pods in the selected namespaces does not match any namespaces", func(t *testing.T) {
+		// GIVEN
+		givenNetPol := getNetPol(t, `
+metadata:
+  name: ingress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            domain: doesnotexist
+    `)
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments(), fixNsOrders()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {givenNetPol},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA()},
+				nsOrders:   {fixPodCandidateOrdersA()},
+			},
+		}
 
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Len(t, actualViolations, 1)
+		assert.Equal(t, model.NewViolation(givenNetPol, "no namespaces matching labels for ingress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
 	})
 
 	t.Run("ingress rule for all pods in the selected namespaces does not match any pod", func(t *testing.T) {
+		// GIVEN
+		givenNetPol := getNetPol(t, `
+metadata:
+  name: ingress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            domain: orders
+    `)
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments(), fixNsOrders()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {givenNetPol},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA()},
+			},
+		}
 
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Len(t, actualViolations, 1)
+		assert.Equal(t, model.NewViolation(givenNetPol, "no pods in namespaces matching labels for ingress rule: [1:1]", model.ViolationInvalidLabel), actualViolations[0])
 	})
 
 	t.Run("returns many combined errors", func(t *testing.T) {
+		// TODO later
 		// GIVEN
 		givenState := model.ClusterState{
 			Namespaces: []v1.Namespace{fixNsOrders()},
