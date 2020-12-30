@@ -49,6 +49,7 @@ func (lc *labelCorrectness) validateNetworkPolicy(np netv1.NetworkPolicy, namesp
 	if err != nil {
 		return nil, err
 	}
+	allViolations = append(allViolations, violations...)
 	return allViolations, nil
 }
 
@@ -91,7 +92,18 @@ func (lc *labelCorrectness) validateIngress(np netv1.NetworkPolicy, namespaces [
 }
 
 func (lc *labelCorrectness) validateEgress(np netv1.NetworkPolicy, namespaces []v1.Namespace, podCandidates map[string][]model.PodCandidate) ([]model.Violation, error) {
-	return nil, nil
+	var allViolations []model.Violation
+	for idxEgress, egressRule := range np.Spec.Egress {
+		for idxFrom, from := range egressRule.To {
+			position := fmt.Sprintf("%d:%d", idxEgress+1, idxFrom+1)
+			violations, err := lc.validatePeer(np, from, position, model.Egress, namespaces, podCandidates)
+			if err != nil {
+				return nil, err
+			}
+			allViolations = append(allViolations, violations...)
+		}
+	}
+	return allViolations, nil
 }
 
 func (lc *labelCorrectness) validatePeer(np netv1.NetworkPolicy, from netv1.NetworkPolicyPeer, position string, ruleType model.RuleType, namespaces []v1.Namespace, podCandidates map[string][]model.PodCandidate) ([]model.Violation, error) {

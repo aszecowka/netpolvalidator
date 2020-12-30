@@ -352,6 +352,294 @@ spec:
 		assert.Equal(t, model.NewViolation(givenNetPol, "no pods in namespaces matching labels for Ingress rule: [1:1]", model.ViolationInvalidLabel), actualViolations[0])
 	})
 
+	// egress start
+	t.Run("egress rule for specific pods and namespaces is correct", func(t *testing.T) {
+		// GIVEN
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments(), fixNsOrders()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {
+					getNetPol(t, `
+metadata:
+  name: egress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            domain: orders
+        podSelector:
+          matchLabels:
+            app: orders-a
+    `),
+				},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA()},
+				nsOrders:   {fixPodCandidateOrdersA()},
+			},
+		}
+
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Empty(t, actualViolations)
+
+	})
+
+	t.Run("egress rule for specific pods and namespaces does not match any namespace", func(t *testing.T) {
+		// GIVEN
+		givenNetPol := getNetPol(t, `
+metadata:
+  name: egress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            domain: doesnotexist
+        podSelector:
+          matchLabels:
+            app: orders-a
+    `)
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments(), fixNsOrders()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {givenNetPol},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA()},
+				nsOrders:   {fixPodCandidateOrdersA()},
+			},
+		}
+
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		require.NoError(t, err)
+		require.Len(t, actualViolations, 1)
+		assert.Equal(t, model.NewViolation(givenNetPol, "no namespaces matching labels for Egress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+	})
+
+	t.Run("egress rule for specific pods and namespaces does not match any pods", func(t *testing.T) {
+		// GIVEN
+		givenNetPol := getNetPol(t, `
+metadata:
+  name: egress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            domain: orders
+        podSelector:
+          matchLabels:
+            app: orders-a
+    `)
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments(), fixNsOrders()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {givenNetPol},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA()},
+				nsOrders:   {fixPodCandidateOrdersB()},
+			},
+		}
+
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Len(t, actualViolations, 1)
+		assert.Equal(t, model.NewViolation(givenNetPol, "no pods matching labels for Egress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+	})
+
+	t.Run("egress rule for pods in the network policy namespace is correct", func(t *testing.T) {
+		// GIVEN
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {
+					getNetPol(t, `
+metadata:
+  name: egress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  egress:
+    - to:
+      - podSelector:
+          matchLabels:
+            app: payments-b
+    `),
+				},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA(), fixPodCandidatePaymentsB()},
+			},
+		}
+
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Empty(t, actualViolations)
+	})
+
+	t.Run("egress rule for pods in the network policy namespace does not match any pods", func(t *testing.T) {
+		// GIVEN
+		givenNetPol := getNetPol(t, `
+metadata:
+  name: egress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  egress:
+    - to:
+      - podSelector:
+          matchLabels:
+            app: payments-c
+    `)
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {givenNetPol},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA(), fixPodCandidatePaymentsB()},
+			},
+		}
+
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Len(t, actualViolations, 1)
+		assert.Equal(t, model.NewViolation(givenNetPol, "no pods matching labels for Egress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+	})
+
+	t.Run("egress rule for all pods in the selected namespaces is correct", func(t *testing.T) {
+		// GIVEN
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments(), fixNsOrders()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {
+					getNetPol(t, `
+metadata:
+  name: egress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            domain: orders
+    `),
+				},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA()},
+				nsOrders:   {fixPodCandidateOrdersA()},
+			},
+		}
+
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Empty(t, actualViolations)
+	})
+
+	t.Run("egress rule for all pods in the selected namespaces does not match any namespaces", func(t *testing.T) {
+		// GIVEN
+		givenNetPol := getNetPol(t, `
+metadata:
+  name: egress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            domain: doesnotexist
+    `)
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments(), fixNsOrders()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {givenNetPol},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA()},
+				nsOrders:   {fixPodCandidateOrdersA()},
+			},
+		}
+
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Len(t, actualViolations, 1)
+		assert.Equal(t, model.NewViolation(givenNetPol, "no namespaces matching labels for Egress rule [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+	})
+
+	t.Run("egress rule for all pods in the selected namespaces does not match any pod", func(t *testing.T) {
+		// GIVEN
+		givenNetPol := getNetPol(t, `
+metadata:
+  name: egress-for-payments-a
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: payments-a
+  egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            domain: orders
+    `)
+		givenState := model.ClusterState{
+			Namespaces: []v1.Namespace{fixNsPayments(), fixNsOrders()},
+			NetworkPolicies: map[string][]netv1.NetworkPolicy{
+				nsPayments: {givenNetPol},
+			},
+			PodCandidates: map[string][]model.PodCandidate{
+				nsPayments: {fixPodCandidatePaymentsA()},
+			},
+		}
+
+		// WHEN
+		actualViolations, err := sut.Validate(givenState)
+		// THEN
+		require.NoError(t, err)
+		require.Len(t, actualViolations, 1)
+		assert.Equal(t, model.NewViolation(givenNetPol, "no pods in namespaces matching labels for Egress rule: [1:1]", model.ViolationInvalidLabel), actualViolations[0])
+	})
+	// egress stop
+
 	t.Run("returns many combined errors", func(t *testing.T) {
 		// TODO later
 		// GIVEN
