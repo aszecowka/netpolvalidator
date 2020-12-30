@@ -31,10 +31,10 @@ type Violation struct {
 	Type                   ViolationType
 }
 
-func NewViolation(ns, netPolName, message string, vType ViolationType) Violation {
+func NewViolation(np networkingv1.NetworkPolicy, message string, vType ViolationType) Violation {
 	return Violation{
-		NetworkPolicyNamespace: ns,
-		NetworkPolicyName:      netPolName,
+		NetworkPolicyNamespace: np.Namespace,
+		NetworkPolicyName:      np.Name,
 		Message:                message,
 		Type:                   vType,
 	}
