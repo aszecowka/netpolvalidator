@@ -45,7 +45,7 @@ func main() {
 
 	nsService := ns.New(clientset.CoreV1().Namespaces())
 	netpolService := netpol.NewService(clientset.NetworkingV1())
-	deployService := podcandidate.NewDeploymentService(clientset.AppsV1())
+	deployService := podcandidate.NewDeploymentsFetcher(clientset.AppsV1())
 	podCandidateProviders := make(map[string]state.PodCandidatesProvider)
 	podCandidateProviders["deploy"] = deployService
 	clusterStateBuilder := state.NewBuilder(nsService, netpolService, podCandidateProviders)
