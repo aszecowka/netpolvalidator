@@ -21,7 +21,7 @@ func (s *service) GetNetworkPoliciesForNamespace(ctx context.Context, ns string)
 	var response []netv1.NetworkPolicy
 	continueOption := ""
 	for {
-		list, err := s.client.NetworkPolicies(ns).List(ctx, metav1.ListOptions{Continue: continueOption, Limit: 1})
+		list, err := s.client.NetworkPolicies(ns).List(ctx, metav1.ListOptions{Continue: continueOption})
 		if err != nil {
 			return nil, fmt.Errorf("while listing network policies from namespace: %s: %w", ns, err)
 		}
