@@ -8,6 +8,7 @@ const (
 	WorkloadJob         WorkloadType = "job"
 	WorkloadStatefulset WorkloadType = "statefulset"
 	WorkloadDaemonset   WorkloadType = "daemonset"
+	WorkloadPod         WorkloadType = "pod"
 )
 
 type WorkloadType string

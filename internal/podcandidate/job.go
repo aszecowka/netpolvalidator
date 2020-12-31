@@ -25,7 +25,7 @@ func (jf *JobFetcher) GetPodCandidatesForNamespace(ctx context.Context, ns strin
 	for {
 		list, err := jf.client.Jobs(ns).List(ctx, v1.ListOptions{Continue: continueOption})
 		if err != nil {
-			return nil, fmt.Errorf("while getting cronjobs for namespace %s: %w", ns, err)
+			return nil, fmt.Errorf("while getting jobs for namespace %s: %w", ns, err)
 		}
 		allJobs = append(allJobs, list.Items...)
 		continueOption = list.Continue
