@@ -23,7 +23,7 @@ func (df *DeploymentsFetcher) GetPodCandidatesForNamespace(ctx context.Context, 
 	var allDeployments []appsv1.Deployment
 	continueOption := ""
 	for {
-		deployments, err := df.client.Deployments(ns).List(ctx, metav1.ListOptions{Continue: continueOption })
+		deployments, err := df.client.Deployments(ns).List(ctx, metav1.ListOptions{Continue: continueOption})
 		if err != nil {
 			return nil, fmt.Errorf("while gettting deployments from namespace: %s: %w", ns, err)
 		}
