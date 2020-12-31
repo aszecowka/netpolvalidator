@@ -45,16 +45,19 @@ func main() {
 
 	nsService := ns.New(clientset.CoreV1().Namespaces())
 	netpolService := netpol.NewService(clientset.NetworkingV1())
-	deployService := podcandidate.NewDeploymentsFetcher(clientset.AppsV1())
 	podCandidateProviders := make(map[string]state.PodCandidatesProvider)
-	podCandidateProviders["deploy"] = deployService
+	podCandidateProviders["cronjob"] = podcandidate.NewCronjobFetcher(clientset.BatchV1beta1())
+	podCandidateProviders["daemonset"] = podcandidate.NewDaemonsetFetcher(clientset.AppsV1())
+	podCandidateProviders["deployment"] = podcandidate.NewDeploymentsFetcher(clientset.AppsV1())
+	podCandidateProviders["job"] = podcandidate.NewJobFetcher(clientset.BatchV1())
+	podCandidateProviders["pod"] = podcandidate.NewPodsFetcher(clientset.CoreV1())
+	podCandidateProviders["statefulset"] = podcandidate.NewStatefulsetsFetcher(clientset.AppsV1())
+
 	clusterStateBuilder := state.NewBuilder(nsService, netpolService, podCandidateProviders)
 	clusterState, err := clusterStateBuilder.Build(ctx)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("ns", len(clusterState.Namespaces))
-	fmt.Println("net pol", len(clusterState.NetworkPolicies))
 	for namespaces, candidates := range clusterState.PodCandidates {
 		fmt.Printf("ns: %s, candidates: %d\n", namespaces, len(candidates))
 	}
