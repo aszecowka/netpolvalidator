@@ -28,21 +28,21 @@ type ClusterState struct {
 }
 
 type Violation struct {
-	NetworkPolicyName      string
-	NetworkPolicyNamespace string
-	Message                string
-	Type                   ViolationType
+	NetworkPolicyName string
+	Namespace         string
+	Message           string
+	Type              ViolationType
 }
 
 func NewViolation(np networkingv1.NetworkPolicy, message string, vType ViolationType) Violation {
 	return Violation{
-		NetworkPolicyNamespace: np.Namespace,
-		NetworkPolicyName:      np.Name,
-		Message:                message,
-		Type:                   vType,
+		Namespace:         np.Namespace,
+		NetworkPolicyName: np.Name,
+		Message:           message,
+		Type:              vType,
 	}
 }
 
 func (v Violation) String() string {
-	return fmt.Sprintf("[%s:%s]: %s: %s", v.NetworkPolicyNamespace, v.NetworkPolicyName, v.Type, v.Message)
+	return fmt.Sprintf("[%s:%s]: %s: %s", v.Namespace, v.NetworkPolicyName, v.Type, v.Message)
 }

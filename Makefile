@@ -29,5 +29,9 @@ static-checks:
 	$(GOBIN)/errcheck -blank ./...
 	go vet ./...
 
+generate:
+	go install github.com/vektra/mockery/cmd/mockery
+	go generate ./...
+
 
 all: check-dependencies build test fmt static-checks
