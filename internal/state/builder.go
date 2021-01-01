@@ -10,14 +10,17 @@ import (
 	"github.com/aszecowka/netpolvalidator/internal/model"
 )
 
+//go:generate ${GOBIN}/mockery -name=NamespacesProvider -output=automcock -outpkg=automock -case=underscore
 type NamespacesProvider interface {
 	GetAllNamespaces(ctx context.Context) ([]v1.Namespace, error)
 }
 
+//go:generate ${GOBIN}/mockery -name=NetworkPoliciesProvider -output=automcock -outpkg=automock -case=underscore
 type NetworkPoliciesProvider interface {
 	GetNetworkPoliciesForNamespace(ctx context.Context, ns string) ([]netv1.NetworkPolicy, error)
 }
 
+//go:generate ${GOBIN}/mockery -name=PodCandidatesProvider -output=automcock -outpkg=automock -case=underscore
 type PodCandidatesProvider interface {
 	GetPodCandidatesForNamespace(ctx context.Context, ns string) ([]model.PodCandidate, error)
 }
