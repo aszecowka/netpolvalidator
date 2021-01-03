@@ -2,14 +2,11 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 
 	"github.com/aszecowka/netpolvalidator/internal"
 	"github.com/aszecowka/netpolvalidator/internal/model"
@@ -21,25 +18,18 @@ import (
 )
 
 func main() {
-	_, err := internal.Load()
+	cfg, err := internal.Load()
 	if err != nil {
 		panic(err)
 	}
 
-	generateReport()
+	generateReport(cfg)
 }
 
-func generateReport() {
-	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
-	flag.Parse()
+func generateReport(cfg internal.Config) {
 
 	// use the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", cfg.Kubeconfig)
 	if err != nil {
 		panic(err.Error())
 	}
