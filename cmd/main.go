@@ -11,6 +11,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 
+	"github.com/aszecowka/netpolvalidator/internal"
 	"github.com/aszecowka/netpolvalidator/internal/model"
 	"github.com/aszecowka/netpolvalidator/internal/netpol"
 	"github.com/aszecowka/netpolvalidator/internal/ns"
@@ -20,6 +21,15 @@ import (
 )
 
 func main() {
+	_, err := internal.Load()
+	if err != nil {
+		panic(err)
+	}
+
+	generateReport()
+}
+
+func generateReport() {
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
